@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -18,6 +19,9 @@ import jakarta.persistence.UniqueConstraint;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "job_applications", indexes = {
@@ -62,6 +66,11 @@ public class JobApplication {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "jobApplication", fetch = FetchType.LAZY,
+            cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private List<ApplicationNote> notes = new ArrayList<>();
+
     protected JobApplication() {
     }
 
@@ -98,6 +107,7 @@ public class JobApplication {
     public Company getCompany() { return company; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public List<ApplicationNote> getNotes() { return notes; }
 
     public void updateDetails(String jobTitle, String jobUrl, String source, String location,
                               LocalDate appliedDate, Company company) {
