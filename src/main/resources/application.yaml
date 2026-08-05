@@ -1,3 +1,10 @@
 spring:
   application:
     name: job-tracker
+  profiles:
+    default: local
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  jpa:
+    open-in-view: false
