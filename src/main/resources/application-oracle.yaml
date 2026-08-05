@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${JOB_TRACKER_ORACLE_URL}
+    username: ${JOB_TRACKER_ORACLE_USERNAME}
+    password: ${JOB_TRACKER_ORACLE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration/oracle

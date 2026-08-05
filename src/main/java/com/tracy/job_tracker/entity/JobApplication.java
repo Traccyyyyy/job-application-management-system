@@ -26,7 +26,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Entity
 @Table(name = "job_applications", indexes = {
         @Index(name = "idx_job_application_status", columnList = "status"),
-        @Index(name = "idx_job_application_applied_date", columnList = "applied_date"),
+        @Index(name = "idx_job_app_applied_date", columnList = "applied_date"),
         @Index(name = "idx_job_application_company", columnList = "company_id")
 }, uniqueConstraints = {
         @UniqueConstraint(name = "uk_job_application_url", columnNames = "job_url")

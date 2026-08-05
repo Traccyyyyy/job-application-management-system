@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${JOB_TRACKER_DB_URL:jdbc:postgresql://localhost:5432/job_tracker}
+    username: ${JOB_TRACKER_DB_USERNAME:job_tracker}
+    password: ${JOB_TRACKER_DB_PASSWORD:job_tracker}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration/postgresql

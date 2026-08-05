@@ -17,7 +17,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "application_notes", indexes = {
-        @Index(name = "idx_application_note_application_created", columnList = "application_id, created_at, id")
+        @Index(name = "idx_note_application_created", columnList = "application_id, created_at, id")
 })
 public class ApplicationNote {
     @Id

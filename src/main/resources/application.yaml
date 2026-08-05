@@ -2,7 +2,7 @@ spring:
   application:
     name: job-tracker
   profiles:
-    default: local
+    default: postgres
   jackson:
     deserialization:
       fail-on-unknown-properties: true
