@@ -1,8 +1,8 @@
 # Job Application Management System
 
-A learning-focused Spring Boot REST API for tracking companies, job applications, and notes. PostgreSQL is the
-required primary relational database. Phase 4 adds controlled Flyway migrations and an Oracle runtime profile for
-the later APEX phase; this project is not production-ready.
+A learning-focused Spring Boot REST API for tracking companies, job applications, and notes, with an independent
+Oracle APEX admin and reporting prototype. PostgreSQL is the required primary relational database; this project is
+not production-ready.
 
 ## Data model and lifecycle
 
@@ -103,7 +103,7 @@ or `.env` files.
 
 ## Oracle profile
 
-The Oracle profile is intended for Phase 5 APEX integration and requires all three environment variables; there are no
+The Oracle profile requires all three environment variables; there are no
 credential defaults:
 
 ```bash
@@ -114,10 +114,25 @@ SPRING_PROFILES_ACTIVE=oracle ./mvnw spring-boot:run
 ```
 
 It uses the official `ojdbc11` driver, Oracle-specific Flyway database support, the Oracle migration location, and
-Hibernate validation. The official Database Free registry advertised a compatible `amd64` image, but it was not
-already installed and the large image download did not complete during verification; the pull was stopped before any
-Oracle container or database existed. The profile and migration are therefore statically prepared, but real Oracle
-runtime compatibility remains unverified. Do not interpret H2 results as Oracle verification.
+Hibernate validation. The Oracle schema was executed successfully in a real APEX workspace, but Spring Boot was not
+tested against a real Oracle database. Do not interpret H2 results or the APEX verification as Oracle runtime-profile
+verification.
+
+## Oracle APEX prototype
+
+The Job Application Manager was built and tested in a real Oracle APEX workspace. It runs directly against the Oracle
+schema as an independent low-code admin and reporting prototype; it does not call the Spring Boot REST API.
+
+It includes an Applications Interactive Report with company search and status filtering, a Create/Edit form with a
+Company LOV that stores `COMPANY_ID`, a constrained Status LOV, an Applications by Status chart, and a Recent
+Applications report. The export is stored at `oracle-apex/job_application_manager.sql`, and screenshots are stored
+under `oracle-apex/screenshots/`. Screenshots contain non-production demo data.
+
+To import:
+
+1. Run `src/main/resources/db/migration/oracle/V1__create_job_tracker_schema.sql` in the target Oracle/APEX parsing schema.
+2. Import `oracle-apex/job_application_manager.sql` through APEX App Builder.
+3. Run the imported application.
 
 ## Configuration model
 
@@ -153,7 +168,7 @@ instance. The remaining focused repository, service, controller, and application
 Phase 4 was verified on Docker Desktop 29.6.2 (`x86_64`) with PostgreSQL 17.6 Alpine, Flyway 12.4.0, PostgreSQL JDBC
 42.7.11, Spring Boot 4.1.0, Hibernate 7.4.1, and Java 17. An empty schema migrated to V1; Hibernate validation and the
 packaged app started; HTTP creation, duplicate handling, filtering/paging/sorting, summary, transition, notes, restart
-persistence, deletion, constraints, indexes, and Flyway history were checked. Oracle runtime verification was not run.
+persistence, deletion, constraints, indexes, and Flyway history were checked.
 
 Completed through Phase 3: Company, JobApplication, ApplicationNote, layered REST API, aggregate note lifecycle,
 validation and safe errors, filtering/pagination/sorting/summary, and H2-backed automated tests.
@@ -162,10 +177,12 @@ Completed in Phase 4: controlled Flyway migrations, default PostgreSQL runtime p
 restart verification, PostgreSQL constraints/indexes, environment-variable database configuration, Oracle runtime
 profile and vendor migration structure. Oracle runtime execution is not claimed.
 
-Deferred: Phase 5 Oracle APEX frontend/integration; Phase 6 GitHub Actions and final evidence; authentication and
-unrelated product expansion.
+Completed in Phase 5: Oracle schema execution in a real APEX workspace and an APEX application built and tested
+directly against those Oracle tables, including reporting, search/filtering, DML forms, LOVs, and dashboard views.
+
+Deferred: Phase 6 GitHub Actions and final evidence; authentication and unrelated product expansion.
 
 Known low-priority limitations remain: validation-message ordering is provider-dependent, pagination has no configured
 maximum page size, whitespace-only optional website values are not normalized before validation, and Oracle runtime
-behavior remains unverified. Hard deletion is a deliberate single-user MVP choice; audit history and soft deletion are
-not included.
+profile behavior remains unverified. Hard deletion is a deliberate single-user MVP choice; audit history and soft
+deletion are not included.
