@@ -1,0 +1,656 @@
+openapi: 3.0.3
+info:
+  title: Job Application Management System API
+  version: 0.0.1
+  description: |
+    REST API for managing companies, job applications, and application notes.
+    This specification is manually maintained against the Spring Boot controllers,
+    request/response DTOs, validation rules, and exception handlers in JAMS.
+    The Oracle APEX prototype is independent of this API.
+    Authentication is not implemented in the current learning-focused MVP.
+servers:
+  - url: /
+    description: Same host and port as the running Spring Boot application
+tags:
+  - name: Health
+  - name: Companies
+  - name: Applications
+  - name: Application Notes
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Check application health
+      responses:
+        '200':
+          description: Application is responding
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+  /api/companies:
+    post:
+      tags: [Companies]
+      operationId: createCompany
+      summary: Create a company
+      description: Company names must be unique (case-insensitively, after trimming).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompanyRequest'
+      responses:
+        '201':
+          description: Created company
+          headers:
+            Location:
+              description: URI of the new company
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Companies]
+      operationId: listCompanies
+      summary: List companies
+      description: Returns companies ordered by name ascending.
+      responses:
+        '200':
+          description: Company list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompanyResponse'
+
+  /api/companies/{id}:
+    parameters:
+      - $ref: '#/components/parameters/CompanyId'
+    get:
+      tags: [Companies]
+      operationId: getCompany
+      summary: Get a company by ID
+      responses:
+        '200':
+          description: Company found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/applications:
+    post:
+      tags: [Applications]
+      operationId: createApplication
+      summary: Create a job application
+      description: |
+        Initial status defaults to SAVED. Only SAVED or APPLIED are allowed at
+        creation; other initial statuses return 409. If created as APPLIED with
+        no appliedDate, the service assigns the current date. jobUrl must be unique.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJobApplicationRequest'
+      responses:
+        '201':
+          description: Created application
+          headers:
+            Location:
+              description: URI of the new job application
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobApplicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Applications]
+      operationId: listApplications
+      summary: Filter, search, sort, and page job applications
+      parameters:
+        - name: status
+          in: query
+          description: Filter by exact application status.
+          schema:
+            $ref: '#/components/schemas/ApplicationStatus'
+        - name: company
+          in: query
+          description: Case-insensitive partial match on company name.
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          description: Case-insensitive search across job title, company, source, and location.
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Zero-based page index.
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Number of items per page; no maximum is currently configured.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+        - name: sortBy
+          in: query
+          description: Sort field.
+          schema:
+            type: string
+            enum: [createdAt, updatedAt, appliedDate, jobTitle, status, companyName]
+            default: createdAt
+        - name: sortDir
+          in: query
+          description: Sort direction.
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Paginated applications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobApplicationPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/applications/summary:
+    get:
+      tags: [Applications]
+      operationId: getApplicationSummary
+      summary: Count applications by status
+      description: Returns all seven status values, including statuses with zero applications.
+      responses:
+        '200':
+          description: Status counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StatusCountResponse'
+
+  /api/applications/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      tags: [Applications]
+      operationId: getApplication
+      summary: Get a job application by ID
+      responses:
+        '200':
+          description: Application found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobApplicationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Applications]
+      operationId: updateApplication
+      summary: Replace editable application details
+      description: |
+        Updates jobTitle, jobUrl, source, location, appliedDate, and companyId.
+        Status is not changed by this operation; use the status PATCH endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateJobApplicationRequest'
+      responses:
+        '200':
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobApplicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Applications]
+      operationId: deleteApplication
+      summary: Delete an application and its notes
+      description: Hard-deletes the application; its notes are removed through the JPA aggregate lifecycle.
+      responses:
+        '204':
+          description: Application deleted; no response body
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/applications/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    patch:
+      tags: [Applications]
+      operationId: changeApplicationStatus
+      summary: Change job application status
+      description: |
+        Allowed transitions:
+        - SAVED -> APPLIED, WITHDRAWN
+        - APPLIED -> SCREENING, REJECTED, WITHDRAWN
+        - SCREENING -> INTERVIEW, REJECTED, WITHDRAWN
+        - INTERVIEW -> OFFER, REJECTED, WITHDRAWN
+        - OFFER, REJECTED, WITHDRAWN -> no different status
+        Requesting the current status is a no-op and returns 200.
+        Transitioning to APPLIED assigns today's date if appliedDate is null.
+        Invalid transitions return 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApplicationStatusRequest'
+      responses:
+        '200':
+          description: Application with current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobApplicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/applications/{applicationId}/notes:
+    parameters:
+      - $ref: '#/components/parameters/ParentApplicationId'
+    post:
+      tags: [Application Notes]
+      operationId: createApplicationNote
+      summary: Add a note to an application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApplicationNoteRequest'
+      responses:
+        '201':
+          description: Created note
+          headers:
+            Location:
+              description: URI containing the new note ID
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationNoteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    get:
+      tags: [Application Notes]
+      operationId: listApplicationNotes
+      summary: List notes belonging to an application
+      description: Notes are ordered newest first, with ID descending as a tie-breaker.
+      responses:
+        '200':
+          description: Application notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationNoteResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    CompanyId:
+      name: id
+      in: path
+      required: true
+      description: Company ID
+      schema:
+        type: integer
+        format: int64
+    ApplicationId:
+      name: id
+      in: path
+      required: true
+      description: Job application ID
+      schema:
+        type: integer
+        format: int64
+    ParentApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      description: Parent job application ID
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    BadRequest:
+      description: Invalid request, failed field validation, or invalid query parameter
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    NotFound:
+      description: Referenced company or job application does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Conflict:
+      description: Duplicate company/job URL, invalid initial status or status transition, or database constraint conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+
+  schemas:
+    ApplicationStatus:
+      type: string
+      enum: [SAVED, APPLIED, SCREENING, INTERVIEW, OFFER, REJECTED, WITHDRAWN]
+
+    CreateCompanyRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+          description: Must contain a non-whitespace character; trimmed before persistence.
+          example: Acme Ltd
+        website:
+          type: string
+          nullable: true
+          maxLength: 1000
+          pattern: '^$|^https?://.+'
+          description: Optional; an empty string or a URL beginning with http:// or https://.
+          example: https://example.com
+        industry:
+          type: string
+          nullable: true
+          maxLength: 150
+          example: Technology
+
+    CompanyResponse:
+      type: object
+      required: [id, name, website, industry, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        website:
+          type: string
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateJobApplicationRequest:
+      type: object
+      required: [jobTitle, jobUrl, companyId]
+      additionalProperties: false
+      properties:
+        jobTitle:
+          type: string
+          minLength: 1
+          maxLength: 150
+          description: Must contain a non-whitespace character.
+          example: Junior Software Engineer
+        jobUrl:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: '^https?://.+'
+          example: https://example.com/jobs/123
+        status:
+          allOf:
+            - $ref: '#/components/schemas/ApplicationStatus'
+          description: Optional, defaults to SAVED. Only SAVED or APPLIED are valid initial values (otherwise 409).
+        source:
+          type: string
+          nullable: true
+          maxLength: 100
+          example: Company website
+        location:
+          type: string
+          nullable: true
+          maxLength: 150
+          example: Sydney
+        appliedDate:
+          type: string
+          format: date
+          nullable: true
+          description: Must not be in the future. Auto-set to today when initial status is APPLIED and this is omitted.
+        companyId:
+          type: integer
+          format: int64
+          description: ID of an existing company.
+
+    UpdateJobApplicationRequest:
+      type: object
+      required: [jobTitle, jobUrl, companyId]
+      additionalProperties: false
+      properties:
+        jobTitle:
+          type: string
+          minLength: 1
+          maxLength: 150
+          example: Backend Software Engineer
+        jobUrl:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: '^https?://.+'
+        source:
+          type: string
+          nullable: true
+          maxLength: 100
+        location:
+          type: string
+          nullable: true
+          maxLength: 150
+        appliedDate:
+          type: string
+          format: date
+          nullable: true
+          description: Must not be in the future.
+        companyId:
+          type: integer
+          format: int64
+          description: ID of an existing company.
+
+    UpdateApplicationStatusRequest:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+
+    CompanySummaryResponse:
+      type: object
+      required: [companyId, companyName]
+      properties:
+        companyId:
+          type: integer
+          format: int64
+        companyName:
+          type: string
+
+    JobApplicationResponse:
+      type: object
+      required: [id, jobTitle, jobUrl, status, source, location, appliedDate, company, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        jobTitle:
+          type: string
+        jobUrl:
+          type: string
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        source:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        appliedDate:
+          type: string
+          format: date
+          nullable: true
+        company:
+          $ref: '#/components/schemas/CompanySummaryResponse'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    JobApplicationPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages, first, last]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobApplicationResponse'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+
+    StatusCountResponse:
+      type: object
+      required: [status, count]
+      properties:
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        count:
+          type: integer
+          format: int64
+          minimum: 0
+
+    CreateApplicationNoteRequest:
+      type: object
+      required: [content]
+      additionalProperties: false
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Must contain a non-whitespace character.
+          example: Recruiter called to schedule an interview.
+
+    ApplicationNoteResponse:
+      type: object
+      required: [id, applicationId, content, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        applicationId:
+          type: integer
+          format: int64
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiErrorResponse:
+      type: object
+      description: Error payload produced by GlobalExceptionHandler.
+      required: [timestamp, status, error, message, path, fieldErrors]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          format: int32
+          example: 400
+        error:
+          type: string
+          example: Bad Request
+        message:
+          type: string
+          example: Request validation failed
+        path:
+          type: string
+          example: /api/applications
+        fieldErrors:
+          type: object
+          additionalProperties:
+            type: string
+          description: Field names mapped to validation error messages; empty for non-validation failures.
+          example:
+            jobTitle: must not be blank
