@@ -32,6 +32,24 @@ Application filters are `status`, `company`, and `keyword`. Supported sort field
 `appliedDate`, `jobTitle`, `status`, and `companyName`. Validation errors return 400, missing resources 404, and
 duplicates or invalid transitions 409. Unexpected and database errors use safe messages without SQL details.
 
+### OpenAPI specification
+
+The manually maintained [OpenAPI 3.0.3 contract](openapi.yaml) documents the REST endpoints, request and response
+schemas, query parameters, validation rules, and documented error responses. It is not generated at runtime, and this
+project does not require Swagger UI or a `springdoc-openapi` dependency.
+
+To explore the API, paste the contents of `openapi.yaml` into [Swagger Editor](https://editor.swagger.io/).
+To validate the specification locally:
+
+```bash
+python -m pip install 'openapi-spec-validator==0.7.2'
+openapi-spec-validator openapi.yaml
+```
+
+GitHub Actions also validates the specification on push and pull requests. When changing a controller, request/response
+DTO, or error contract, update `openapi.yaml` in the same PR. This check validates the OpenAPI document's structure
+and references; it does not automatically test whether the running API matches the documented contract.
+
 ## Database responsibilities
 
 | Database | Responsibility | Schema strategy |
